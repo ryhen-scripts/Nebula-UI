@@ -30,8 +30,24 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local PlayerGui = (RunService:IsStudio() and LocalPlayer:FindFirstChild("PlayerGui") or game:GetService("CoreGui"))
+local PlayerGui = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+local CoreGui = game:GetService("CoreGui")
+
+local function GetHUI()
+    if gethui then return gethui() end
+    if (not game:GetService("RunService"):IsStudio()) and CoreGui:FindFirstChild("RobloxGui") then
+        return CoreGui.RobloxGui
+    end
+    return PlayerGui
+end
+
+local function RandomString(length)
+    local res = ""
+    for i = 1, length do
+        res = res .. string.char(math.random(97, 122))
+    end
+    return res
+end
 
 -- UTILITIES
 local function Create(className, properties, children)
@@ -43,13 +59,13 @@ local function Create(className, properties, children)
         child.Parent = instance
     end
     return instance
-end
+}
 
 function Nebula:Tween(obj, info, goal)
     local tween = TweenService:Create(obj, info, goal)
     tween:Play()
     return tween
-end
+}
 
 function Nebula:MakeDraggable(obj, dragPart)
     local dragging, dragInput, dragStart, startPos
@@ -97,11 +113,12 @@ function Nebula:CreateWindow(config)
     local Theme = Nebula.Themes[Nebula.CurrentTheme]
 
     local ScreenGui = Create("ScreenGui", {
-        Name = "NebulaUI",
-        Parent = PlayerGui,
+        Name = RandomString(12),
+        Parent = GetHUI(),
         ResetOnSpawn = false,
         DisplayOrder = 100
     })
+    ScreenGui:SetAttribute("NebulaUI", true)
 
     local Main = Create("CanvasGroup", {
         Name = "Main",
@@ -1280,7 +1297,8 @@ end
 
 function Nebula:CreateLoadingScreen(title, subtitle)
     local Theme = Nebula.Themes[Nebula.CurrentTheme]
-    local ScreenGui = Create("ScreenGui", {Name = "NebulaLoading", Parent = PlayerGui})
+    local ScreenGui = Create("ScreenGui", {Name = RandomString(12), Parent = GetHUI()})
+    ScreenGui:SetAttribute("NebulaUI", true)
     
     local MainFrame = Create("CanvasGroup", {
         AnchorPoint = Vector2.new(0.5, 0.5),
@@ -1433,7 +1451,8 @@ Nebula:CreateLoadingScreen("NEBULA", "Synchronizing Panel...")
 function Nebula:CreateDock(config)
     config = config or {}
     local Theme = Nebula.Themes[Nebula.CurrentTheme]
-    local ScreenGui = Create("ScreenGui", {Name = "NebulaDock", Parent = PlayerGui, DisplayOrder = 200})
+    local ScreenGui = Create("ScreenGui", {Name = RandomString(12), Parent = GetHUI(), DisplayOrder = 200})
+    ScreenGui:SetAttribute("NebulaUI", true)
     
     local Dock = Create("CanvasGroup", {
         Name = "Dock",
