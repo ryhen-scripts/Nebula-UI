@@ -1489,7 +1489,7 @@ function Nebula:CreateDock(config)
         BackgroundTransparency = 1,
         CanvasSize = UDim2.new(0, 0, 0, 0),
         ScrollBarThickness = 0,
-        ScrollingDirection = Enum.ScrollingDirection.Horizontal,
+        ScrollingDirection = Enum.ScrollingDirection.X,
         Parent = Dock
     }, {
         Create("UIListLayout", {
