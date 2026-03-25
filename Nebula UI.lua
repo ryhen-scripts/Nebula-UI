@@ -61,6 +61,9 @@ local function Create(className, properties, children)
     return instance
 end
 
+function Nebula:Tween(obj, info, goal)
+    local tween = TweenService:Create(obj, info, goal)
+    tween:Play()
     return tween
 end
 
@@ -272,7 +275,7 @@ function Nebula:CinematicServerHop()
         Nebula:Notify({Title = "Orbital Error", Content = "Teleport failed: " .. tostring(err), Type = "Error"})
         Camera.CameraType = Enum.CameraType.Custom
     end
-end
+function Nebula:Dialog(config)
     config = config or {}
     local Title = config.Title or "Confirm Action"
     local Content = config.Content or ""
