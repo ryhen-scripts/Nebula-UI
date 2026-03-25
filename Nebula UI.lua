@@ -1,6 +1,6 @@
 --[[
     Nebula UI Suite
-    Created by Antigravity (Google Deepmind)
+    Created by Ryhen
     Version: 1.0.0
     
     A premium, original, and modern UI library for Roblox.
@@ -296,6 +296,14 @@ function Nebula:CreateWindow(config)
         Window.OnSearch = callback
     end
 
+    function Window:AddDock(config)
+        Window.Dock = Nebula:CreateDock(config)
+        for _, tab in ipairs(Window.Tabs) do
+            Window.Dock:AddIcon(tab.Name, tab.Icon, function() tab:Select() end)
+        end
+        return Window.Dock
+    end
+
     function Window:AddTab(options)
         options = options or {}
         local Name = options.Title or "Tab"
@@ -345,16 +353,34 @@ function Nebula:CreateWindow(config)
         })
 
         local Tab = {
+            Name = Name,
+            Icon = Icon,
             Button = TabButton,
             Frame = TabFrame,
-            Elements = {}
+            Elements = {},
+            StoredElements = {},
+            Rendered = false
         }
+
+        table.insert(Window.Tabs, Tab)
+        if Window.Dock then
+            Window.Dock:AddIcon(Name, Icon, function() Tab:Select() end)
+        end
+
+        function Tab:Render()
+            if Tab.Rendered then return end
+            Tab.Rendered = true
+            for _, data in ipairs(Tab.StoredElements) do
+                data.Func(data.Options)
+            end
+        end
 
         function Tab:Select()
             if Window.SelectedTab then
                 Window.SelectedTab:Unselect()
             end
             Window.SelectedTab = Tab
+            Tab:Render()
             Tab.Frame.Visible = true
             Nebula:Tween(TabButton, TweenInfo.new(0.3), {BackgroundTransparency = 0.4})
             TabButton.TextLabel.TextColor3 = Theme.Text
@@ -380,8 +406,16 @@ function Nebula:CreateWindow(config)
             Tab:Select()
         end
 
-        -- Element Creation
+        -- Element Creation (Lazy)
+        local function StoreElement(func, options)
+            table.insert(Tab.StoredElements, {Func = func, Options = options})
+        end
+
         function Tab:AddButton(options)
+            if not Tab.Rendered then 
+                StoreElement(Tab.AddButton, options)
+                return {} 
+            end
             options = options or {}
             local Title = options.Title or "Button"
             local Description = options.Description or ""
@@ -440,7 +474,36 @@ function Nebula:CreateWindow(config)
             return {SetTitle = function(t) Label.Text = t end}
         end
 
+        function Tab:AddSection(Title)
+            if not Tab.Rendered then 
+                StoreElement(Tab.AddSection, Title)
+                return 
+            end
+            local SectionFrame = Create("Frame", {
+                BackgroundColor3 = Theme.Accent,
+                BackgroundTransparency = 0.9,
+                Size = UDim2.new(1, 0, 0, 25),
+                Parent = TabFrame
+            }, {
+                Create("UICorner", {CornerRadius = UDim.new(0, 4)}),
+                Create("TextLabel", {
+                    Text = Title:upper(),
+                    Font = Enum.Font.GothamBold,
+                    TextColor3 = Theme.Accent,
+                    TextSize = 11,
+                    Position = UDim2.fromOffset(10, 0),
+                    Size = UDim2.fromScale(1, 1),
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    BackgroundTransparency = 1
+                })
+            })
+        end
+
         function Tab:AddToggle(options)
+            if not Tab.Rendered then 
+                StoreElement(Tab.AddToggle, options)
+                return {SetValue = function() end} 
+            end
             options = options or {}
             local Title = options.Title or "Toggle"
             local Default = options.Default or false
@@ -511,6 +574,10 @@ function Nebula:CreateWindow(config)
         end
 
         function Tab:AddSlider(options)
+            if not Tab.Rendered then 
+                StoreElement(Tab.AddSlider, options)
+                return {SetValue = function() end} 
+            end
             options = options or {}
             local Title = options.Title or "Slider"
             local Default = options.Default or 50
@@ -623,6 +690,10 @@ function Nebula:CreateWindow(config)
         end
 
         function Tab:AddDropdown(options)
+            if not Tab.Rendered then 
+                StoreElement(Tab.AddDropdown, options)
+                return {SetValues = function() end} 
+            end
             options = options or {}
             local Title = options.Title or "Dropdown"
             local Values = options.Values or {"Option 1", "Option 2"}
@@ -731,6 +802,10 @@ function Nebula:CreateWindow(config)
         end
 
         function Tab:AddColorpicker(options)
+            if not Tab.Rendered then 
+                StoreElement(Tab.AddColorpicker, options)
+                return {SetValue = function() end} 
+            end
             -- Simplified version for now
             options = options or {}
             local Title = options.Title or "Colorpicker"
@@ -773,6 +848,10 @@ function Nebula:CreateWindow(config)
         end
 
         function Tab:AddKeybind(options)
+            if not Tab.Rendered then 
+                StoreElement(Tab.AddKeybind, options)
+                return {SetKey = function() end} 
+            end
             options = options or {}
             local Title = options.Title or "Keybind"
             local Default = options.Default or Enum.KeyCode.E
@@ -842,6 +921,10 @@ function Nebula:CreateWindow(config)
         end
 
         function Tab:AddInput(options)
+            if not Tab.Rendered then 
+                StoreElement(Tab.AddInput, options)
+                return {SetText = function() end} 
+            end
             options = options or {}
             local Title = options.Title or "Input"
             local Placeholder = options.Placeholder or "Type here..."
@@ -875,6 +958,47 @@ function Nebula:CreateWindow(config)
             end)
 
             return {SetText = function(t) TextBox.Text = t end}
+        end
+
+        function Tab:AddParagraph(options)
+            if not Tab.Rendered then 
+                StoreElement(Tab.AddParagraph, options)
+                return {SetTitle = function() end, SetContent = function() end} 
+            end
+            options = options or {}
+            local Title = options.Title or "Paragraph"
+            local Content = options.Content or ""
+
+            local ParagraphFrame = Create("Frame", {
+                BackgroundColor3 = Theme.Element,
+                Size = UDim2.new(1, 0, 0, 60),
+                Parent = TabFrame
+            }, {
+                Create("UICorner", {CornerRadius = UDim.new(0, 8)}),
+                Create("TextLabel", {
+                    Text = Title,
+                    Font = Enum.Font.GothamBold,
+                    TextColor3 = Theme.Text,
+                    TextSize = 14,
+                    Position = UDim2.fromOffset(12, 10),
+                    Size = UDim2.new(1, -24, 0, 20),
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    BackgroundTransparency = 1
+                }),
+                Create("TextLabel", {
+                    Text = Content,
+                    Font = Enum.Font.Gotham,
+                    TextColor3 = Theme.SubText,
+                    TextSize = 12,
+                    Position = UDim2.fromOffset(12, 30),
+                    Size = UDim2.new(1, -24, 0, 20),
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    TextWrapped = true,
+                    BackgroundTransparency = 1
+                })
+            })
+
+            return {SetTitle = function(t) end, SetContent = function(c) end}
         end
 
         return Tab
@@ -1008,42 +1132,6 @@ function Nebula:CreateWindow(config)
         end
     end
 
-    function Window:AddParagraph(options)
-        options = options or {}
-        local Title = options.Title or "Paragraph"
-        local Content = options.Content or ""
-
-        local ParagraphFrame = Create("Frame", {
-            BackgroundColor3 = Theme.Element,
-            Size = UDim2.new(1, 0, 0, 60),
-            Parent = Window.SelectedTab.Frame
-        }, {
-            Create("UICorner", {CornerRadius = UDim.new(0, 8)}),
-            Create("TextLabel", {
-                Text = Title,
-                Font = Enum.Font.GothamBold,
-                TextColor3 = Theme.Text,
-                TextSize = 14,
-                Position = UDim2.fromOffset(12, 10),
-                Size = UDim2.new(1, -24, 0, 20),
-                TextXAlignment = Enum.TextXAlignment.Left,
-                BackgroundTransparency = 1
-            }),
-            Create("TextLabel", {
-                Text = Content,
-                Font = Enum.Font.Gotham,
-                TextColor3 = Theme.SubText,
-                TextSize = 12,
-                Position = UDim2.fromOffset(12, 30),
-                Size = UDim2.new(1, -24, 0, 20),
-                TextXAlignment = Enum.TextXAlignment.Left,
-                TextWrapped = true,
-                BackgroundTransparency = 1
-            })
-        })
-
-        return {SetTitle = function(t) end, SetContent = function(c) end}
-    end
 
     function Window:AddProfile(options)
         options = options or {}
@@ -1341,5 +1429,135 @@ MainTab:AddToggle({
 
 Nebula:CreateLoadingScreen("NEBULA", "Synchronizing Panel...")
 --]]
+
+function Nebula:CreateDock(config)
+    config = config or {}
+    local Theme = Nebula.Themes[Nebula.CurrentTheme]
+    local ScreenGui = Create("ScreenGui", {Name = "NebulaDock", Parent = PlayerGui, DisplayOrder = 200})
+    
+    local Dock = Create("CanvasGroup", {
+        Name = "Dock",
+        AnchorPoint = Vector2.new(0.5, 1),
+        BackgroundColor3 = Theme.Main,
+        Position = UDim2.new(0.5, 0, 1, -20),
+        Size = UDim2.fromOffset(450, 60),
+        Parent = ScreenGui
+    }, {
+        Create("UICorner", {CornerRadius = UDim.new(0, 15)}),
+        Create("UIStroke", {Color = Theme.Border, Thickness = 1.5, Transparency = 0.5}),
+        Create("UIPadding", {PaddingLeft = UDim.new(0, 15), PaddingRight = UDim.new(0, 5)})
+    })
+
+    local Layout = Create("UIListLayout", {
+        FillDirection = Enum.FillDirection.Horizontal,
+        HorizontalAlignment = Enum.HorizontalAlignment.Left,
+        VerticalAlignment = Enum.VerticalAlignment.Center,
+        Padding = UDim.new(0, 12),
+        Parent = Dock
+    })
+
+    -- Clock Widget
+    local ClockLabel = Create("TextLabel", {
+        Name = "Clock",
+        Font = Enum.Font.GothamBold,
+        TextColor3 = Theme.Text,
+        TextSize = 16,
+        Text = "00:00",
+        Size = UDim2.new(0, 50, 1, 0),
+        BackgroundTransparency = 1,
+        Parent = Dock
+    })
+
+    task.spawn(function()
+        while task.wait(1) do
+            local Time = os.date("*t")
+            ClockLabel.Text = string.format("%02d:%02d", Time.hour, Time.min)
+        end
+    end)
+
+    -- Separator
+    Create("Frame", {
+        BackgroundColor3 = Theme.Border,
+        Size = UDim2.new(0, 1, 0, 30),
+        BackgroundTransparency = 0.5,
+        Parent = Dock
+    })
+
+    local IconsContainer = Create("ScrollingFrame", {
+        Name = "Icons",
+        Size = UDim2.new(1, -120, 1, 0),
+        BackgroundTransparency = 1,
+        CanvasSize = UDim2.new(0, 0, 0, 0),
+        ScrollBarThickness = 0,
+        ScrollingDirection = Enum.ScrollingDirection.Horizontal,
+        Parent = Dock
+    }, {
+        Create("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal,
+            Padding = UDim.new(0, 10),
+            VerticalAlignment = Enum.VerticalAlignment.Center
+        }),
+        Create("UIPadding", {PaddingLeft = UDim.new(0, 5), PaddingRight = UDim.new(0, 5)})
+    })
+
+    -- Settings Gear (Right Side)
+    local SettingsBtn = Create("ImageButton", {
+        Name = "Settings",
+        BackgroundColor3 = Theme.Element,
+        Size = UDim2.fromOffset(40, 40),
+        Image = "rbxassetid://10712535031",-- "rbxassetid://10734950309"
+        ImageColor3 = Theme.Text,
+        Parent = Dock
+    }, {
+        Create("UICorner", {CornerRadius = UDim.new(0, 12)})
+    })
+
+    local DockObj = {
+        ScreenGui = ScreenGui,
+        Dock = Dock,
+        Icons = IconsContainer
+    }
+
+    function DockObj:AddIcon(name, icon, callback)
+        local IconBtn = Create("ImageButton", {
+            Name = name,
+            BackgroundColor3 = Color3.new(1, 1, 1),
+            Size = UDim2.fromOffset(42, 42),
+            Image = icon,
+            ImageColor3 = Color3.new(1, 1, 1),
+            Parent = IconsContainer
+        }, {
+            Create("UICorner", {CornerRadius = UDim.new(0, 12)}),
+            Create("UIGradient", {
+                Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Theme.Accent),
+                    ColorSequenceKeypoint.new(1, Theme.Secondary)
+                }),
+                Rotation = 45
+            })
+        })
+
+        IconBtn.MouseButton1Click:Connect(callback)
+        
+        -- Animation on Click
+        IconBtn.MouseButton1Down:Connect(function()
+            Nebula:Tween(IconBtn, TweenInfo.new(0.2), {Size = UDim2.fromOffset(38, 38)})
+        end)
+        IconBtn.MouseButton1Up:Connect(function()
+            Nebula:Tween(IconBtn, TweenInfo.new(0.2), {Size = UDim2.fromOffset(42, 42)})
+        end)
+
+        -- Update Dock Canvas Size
+        IconsContainer.CanvasSize = UDim2.new(0, #IconsContainer:GetChildren() * 52 + 20, 0, 0)
+    end
+
+    SettingsBtn.MouseButton1Click:Connect(function()
+        if config.OnSettings then
+            config.OnSettings()
+        end
+    end)
+
+    return DockObj
+end
 
 return Nebula
