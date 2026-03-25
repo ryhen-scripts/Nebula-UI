@@ -271,10 +271,9 @@ function Nebula:CinematicServerHop()
         TeleportService:Teleport(game.PlaceId, Players.LocalPlayer)
     end)
     
-    if not success then
-        Nebula:Notify({Title = "Orbital Error", Content = "Teleport failed: " .. tostring(err), Type = "Error"})
-        Camera.CameraType = Enum.CameraType.Custom
     end
+end
+
 function Nebula:Dialog(config)
     config = config or {}
     local Title = config.Title or "Confirm Action"
