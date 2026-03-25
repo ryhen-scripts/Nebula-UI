@@ -61,11 +61,8 @@ local function Create(className, properties, children)
     return instance
 end
 
-function Nebula:Tween(obj, info, goal)
-    local tween = TweenService:Create(obj, info, goal)
-    tween:Play()
     return tween
-}
+end
 
 function Nebula:MakeDraggable(obj, dragPart)
     local dragging, dragInput, dragStart, startPos
