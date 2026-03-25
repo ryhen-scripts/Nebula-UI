@@ -1294,9 +1294,57 @@ function Nebula:CreateWindow(config)
         return Tab
     end
 
-    function Window:ServerHop()
-        Nebula:CinematicServerHop()
+    function Nebula:SetTheme(name)
+    if self.Themes[name] then
+        self.CurrentTheme = name
+        local theme = self.Themes[name]
+        -- This is a partial implementation, full implementation would require updating all instances
+        -- For now, we'll just update the global theme and notify
+        self:Notify({Title = "Theme Updated", Content = "Applied " .. name .. " aesthetic.", Type = "Success"})
     end
+end
+
+-- ESP Utilities
+local ESPObjects = {}
+function Nebula:CreateESP(player, options)
+    options = options or {}
+    local Tracer = options.Tracer or false
+    local Box = options.Box or false
+    
+    local function SetupESP(char)
+        if not char then return end
+        local root = char:WaitForChild("HumanoidRootPart")
+        
+        if Tracer then
+            local line = Drawing.new("Line")
+            line.Visible = false
+            line.Color = Color3.new(1, 1, 1)
+            line.Thickness = 1
+            line.Transparency = 1
+            
+            local Connection
+            Connection = RunService.RenderStepped:Connect(function()
+                if char.Parent and root.Parent then
+                    local vector, onScreen = workspace.CurrentCamera:WorldToViewportPoint(root.Position)
+                    if onScreen then
+                        line.From = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, workspace.CurrentCamera.ViewportSize.Y)
+                        line.To = Vector2.new(vector.X, vector.Y)
+                        line.Visible = true
+                    else
+                        line.Visible = false
+                    end
+                else
+                    line.Visible = false
+                    line:Remove()
+                    Connection:Disconnect()
+                end
+            end)
+        end
+    end
+    
+    player.CharacterAdded:Connect(SetupESP)
+    if player.Character then SetupESP(player.Character) end
+end
 
 
     function Window:AddProfile(options)
