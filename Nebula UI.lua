@@ -105,6 +105,225 @@ end
 -- CORE MODULES
 local Components = {}
 
+-- Global Notification Container
+local NotificationScreenGui = Create("ScreenGui", {
+    Name = "NebulaNotifications",
+    Parent = GetHUI(),
+    DisplayOrder = 1000,
+    ResetOnSpawn = false
+})
+
+local NotifyContainer = Create("UIListLayout", {
+    FillDirection = Enum.FillDirection.Vertical,
+    HorizontalAlignment = Enum.HorizontalAlignment.Right,
+    VerticalAlignment = Enum.VerticalAlignment.Bottom,
+    Padding = UDim.new(0, 10),
+    Parent = Create("Frame", {
+        Size = UDim2.fromScale(1, 1),
+        BackgroundTransparency = 1,
+        Parent = NotificationScreenGui
+    })
+})
+
+function Nebula:Notify(config)
+    config = config or {}
+    local Title = config.Title or "Notification"
+    local Content = config.Content or ""
+    local Duration = config.Duration or 5
+    local Type = config.Type or "Info" -- Info, Success, Warning, Error
+    
+    local Theme = Nebula.Themes[Nebula.CurrentTheme]
+    local AccentColor = Theme.Accent
+    local Icon = "rbxassetid://10723351906" -- Default info icon
+    
+    if Type == "Success" then
+        AccentColor = Color3.fromRGB(0, 255, 150)
+        Icon = "rbxassetid://10731671239"
+    elseif Type == "Warning" then
+        AccentColor = Color3.fromRGB(255, 170, 0)
+        Icon = "rbxassetid://10734950309"
+    elseif Type == "Error" then
+        AccentColor = Color3.fromRGB(255, 50, 50)
+        Icon = "rbxassetid://10723343121"
+    end
+
+    local Notification = Create("CanvasGroup", {
+        Size = UDim2.new(0, 280, 0, 80),
+        BackgroundColor3 = Theme.Background,
+        BackgroundTransparency = 0.1,
+        Parent = NotifyContainer.Parent -- Parent to the Frame holding the UIListLayout
+    }, {
+        Create("UICorner", {CornerRadius = UDim.new(0, 10)}),
+        Create("UIStroke", {Color = AccentColor, Transparency = 0.8, Thickness = 1.5}),
+        Create("Frame", {
+            Size = UDim2.new(0, 4, 1, -20),
+            Position = UDim2.new(0, 8, 0, 10),
+            BackgroundColor3 = AccentColor,
+            Parent = nil -- Will add later
+        }, {Create("UICorner", {CornerRadius = UDim.new(0, 2)})}),
+        Create("ImageLabel", {
+            Size = UDim2.fromOffset(24, 24),
+            Position = UDim2.new(0, 15, 0, 12),
+            Image = Icon,
+            ImageColor3 = AccentColor,
+            BackgroundTransparency = 1
+        }),
+        Create("TextLabel", {
+            Text = Title,
+            Size = UDim2.new(1, -50, 0, 20),
+            Position = UDim2.new(0, 45, 0, 12),
+            TextColor3 = Theme.Text,
+            Font = Theme.Font,
+            TextSize = 14,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            BackgroundTransparency = 1
+        }),
+        Create("TextLabel", {
+            Text = Content,
+            Size = UDim2.new(1, -20, 1, -45),
+            Position = UDim2.new(0, 15, 0, 35),
+            TextColor3 = Theme.Text,
+            Font = Theme.Font,
+            TextSize = 12,
+            TextTransparency = 0.4,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            TextYAlignment = Enum.TextYAlignment.Top,
+            TextWrapped = true,
+            BackgroundTransparency = 1
+        }),
+        Create("Frame", {
+            Name = "Progress",
+            Size = UDim2.new(1, 0, 0, 2),
+            Position = UDim2.new(0, 0, 1, -2),
+            BackgroundColor3 = AccentColor,
+            BackgroundTransparency = 0.5
+        })
+    })
+
+    -- Animate in
+    Notification.Position = UDim2.new(1, 10, 0, 0)
+    Nebula:Tween(Notification, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = UDim2.new(1, -290, 0, 0)})
+
+    -- Animate progress bar
+    local ProgressBar = Notification:FindFirstChild("Progress")
+    if ProgressBar then
+        ProgressBar.Size = UDim2.fromScale(1, 1)
+        Nebula:Tween(ProgressBar, TweenInfo.new(Duration, Enum.EasingStyle.Linear), {Size = UDim2.fromScale(0, 1)})
+    end
+
+    task.delay(Duration, function()
+        Nebula:Tween(Notification, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Position = UDim2.new(1, 10, 0, 0)})
+        task.wait(0.5)
+        Notification:Destroy()
+    end)
+end
+
+function Nebula:Dialog(config)
+    config = config or {}
+    local Title = config.Title or "Confirm Action"
+    local Content = config.Content or ""
+    local ShowInput = config.ShowInput or false
+    local Placeholder = config.Placeholder or "Enter value..."
+    local Buttons = config.Buttons or {
+        {Title = "OK", Callback = function(v) end}
+    }
+
+    local Theme = Nebula.Themes[Nebula.CurrentTheme]
+
+    local Overlay = Create("Frame", {
+        BackgroundColor3 = Color3.new(0, 0, 0),
+        BackgroundTransparency = 1,
+        Size = UDim2.fromScale(1, 1),
+        ZIndex = 1000,
+        Parent = GetHUI()
+    })
+
+    local DialogFrame = Create("CanvasGroup", {
+        Size = UDim2.new(0, 350, 0, ShowInput and 180 or 150),
+        BackgroundColor3 = Theme.Background,
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.new(0.5, 0, 0.5, 0),
+        Parent = Overlay,
+        GroupTransparency = 1
+    }, {
+        Create("UICorner", {CornerRadius = UDim.new(0, 12)}),
+        Create("UIStroke", {Color = Theme.Border, Transparency = 0.5}),
+        Create("TextLabel", {
+            Text = Title,
+            Size = UDim2.new(1, 0, 0, 40),
+            TextColor3 = Theme.Text,
+            Font = Theme.Font,
+            TextSize = 16,
+            BackgroundTransparency = 1
+        }),
+        Create("TextLabel", {
+            Text = Content,
+            Size = UDim2.new(1, -40, 0, 40),
+            Position = UDim2.new(0, 20, 0, 40),
+            TextColor3 = Theme.Text,
+            Font = Theme.Font,
+            TextSize = 13,
+            TextTransparency = 0.4,
+            TextWrapped = true,
+            BackgroundTransparency = 1
+        }),
+        Create("TextBox", {
+            Name = "Input",
+            Visible = ShowInput,
+            Size = UDim2.new(1, -40, 0, 35),
+            Position = UDim2.new(0, 20, 0, 85),
+            BackgroundColor3 = Theme.Element,
+            TextColor3 = Theme.Text,
+            PlaceholderText = Placeholder,
+            PlaceholderColor3 = Color3.fromRGB(100, 100, 100),
+            Font = Theme.Font,
+            TextSize = 13,
+            Parent = nil -- manually set later
+        }, {Create("UICorner", {CornerRadius = UDim.new(0, 6)}), Create("UIPadding", {PaddingLeft = UDim.new(0, 10)})}),
+        Create("Frame", {
+            Name = "ButtonContainer",
+            Size = UDim2.new(1, -40, 0, 40),
+            Position = UDim2.new(0, 20, 1, -50),
+            BackgroundTransparency = 1
+        }, {
+            Create("UIListLayout", {
+                FillDirection = Enum.FillDirection.Horizontal,
+                Padding = UDim.new(0, 10),
+                HorizontalAlignment = Enum.HorizontalAlignment.Center
+            })
+        })
+    })
+    
+    local InputField = DialogFrame:FindFirstChild("Input")
+    if ShowInput then
+        InputField.Parent = DialogFrame
+    end
+    local BtnContainer = DialogFrame.ButtonContainer
+
+    Nebula:Tween(Overlay, TweenInfo.new(0.3), {BackgroundTransparency = 0.4})
+    Nebula:Tween(DialogFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back), {GroupTransparency = 0})
+
+    for _, btnData in ipairs(Buttons) do
+        local Btn = Create("TextButton", {
+            Text = btnData.Title,
+            Size = UDim2.new(0, 100, 1, 0),
+            BackgroundColor3 = Theme.Element,
+            TextColor3 = Theme.Text,
+            Font = Theme.Font,
+            TextSize = 13,
+            Parent = BtnContainer
+        }, {Create("UICorner", {CornerRadius = UDim.new(0, 6)})})
+
+        Btn.MouseButton1Click:Connect(function()
+            local value = ShowInput and InputField.Text or nil
+            btnData.Callback(value)
+            
+            Nebula:Tween(DialogFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back), {GroupTransparency = 1, Size = UDim2.new(0, 300, 0, 100)}).Completed:Wait()
+            Overlay:Destroy()
+        end)
+    end
+end
+
 function Nebula:CreateWindow(config)
     config = config or {}
     local Title = config.Title or "Nebula Suite"
@@ -400,7 +619,7 @@ function Nebula:CreateWindow(config)
             Tab:Render()
             Tab.Frame.Visible = true
             Nebula:Tween(TabButton, TweenInfo.new(0.3), {BackgroundTransparency = 0.4})
-            TabButton.TextLabel.TextColor3 = Theme.Text
+            TabButton:FindFirstChild("TextLabel").TextColor3 = Theme.Text
             if TabButton:FindFirstChild("Icon") then
                 TabButton.Icon.ImageColor3 = Theme.Accent
             end
@@ -409,7 +628,7 @@ function Nebula:CreateWindow(config)
         function Tab:Unselect()
             Tab.Frame.Visible = false
             Nebula:Tween(TabButton, TweenInfo.new(0.3), {BackgroundTransparency = 0.8})
-            TabButton.TextLabel.TextColor3 = Theme.SubText
+            TabButton:FindFirstChild("TextLabel").TextColor3 = Theme.SubText
             if TabButton:FindFirstChild("Icon") then
                 TabButton.Icon.ImageColor3 = Theme.SubText
             end
@@ -472,7 +691,7 @@ function Nebula:CreateWindow(config)
                 TextColor3 = Theme.SubText,
                 TextSize = 11,
                 Position = UDim2.fromOffset(12, 22),
-                Size = UDim2.fromScale(1, 0.4),
+                Size = UDim2.new(1, 0.4, 0, 0),
                 TextXAlignment = Enum.TextXAlignment.Left,
                 BackgroundTransparency = 1,
                 Parent = ButtonFrame
@@ -509,7 +728,7 @@ function Nebula:CreateWindow(config)
                     TextColor3 = Theme.Accent,
                     TextSize = 11,
                     Position = UDim2.fromOffset(10, 0),
-                    Size = UDim2.fromScale(1, 1),
+                    Size = UDim2.new(1, 0, 1, 0),
                     TextXAlignment = Enum.TextXAlignment.Left,
                     BackgroundTransparency = 1
                 })
@@ -542,7 +761,7 @@ function Nebula:CreateWindow(config)
                 TextColor3 = Theme.Text,
                 TextSize = 14,
                 Position = UDim2.fromOffset(12, 0),
-                Size = UDim2.fromScale(1, 1),
+                Size = UDim2.new(1, 0, 1, 0),
                 TextXAlignment = Enum.TextXAlignment.Left,
                 BackgroundTransparency = 1,
                 Parent = ToggleFrame
@@ -844,7 +1063,7 @@ function Nebula:CreateWindow(config)
                 TextColor3 = Theme.Text,
                 TextSize = 14,
                 Position = UDim2.fromOffset(12, 0),
-                Size = UDim2.fromScale(1, 1),
+                Size = UDim2.new(1, 0, 1, 0),
                 TextXAlignment = Enum.TextXAlignment.Left,
                 BackgroundTransparency = 1,
                 Parent = PickerFrame
@@ -891,7 +1110,7 @@ function Nebula:CreateWindow(config)
                 TextColor3 = Theme.Text,
                 TextSize = 14,
                 Position = UDim2.fromOffset(12, 0),
-                Size = UDim2.fromScale(1, 1),
+                Size = UDim2.new(1, 0, 1, 0),
                 TextXAlignment = Enum.TextXAlignment.Left,
                 BackgroundTransparency = 1,
                 Parent = KeybindFrame
@@ -1022,131 +1241,11 @@ function Nebula:CreateWindow(config)
     end
 
     function Window:Notify(options)
-        options = options or {}
-        local Title = options.Title or "Notification"
-        local Content = options.Content or "Check this out!"
-        local Duration = options.Duration or 5
-
-        local NotifFrame = Create("Frame", {
-            BackgroundColor3 = Theme.Holder,
-            Size = UDim2.fromOffset(250, 60),
-            Position = UDim2.new(1, 10, 1, -70),
-            Parent = ScreenGui
-        }, {
-            Create("UICorner", {CornerRadius = UDim.new(0, 8)}),
-            Create("UIStroke", {Color = Theme.Accent, Thickness = 2}),
-            Create("TextLabel", {
-                Text = Title,
-                Font = Enum.Font.GothamBold,
-                TextColor3 = Theme.Text,
-                TextSize = 14,
-                Position = UDim2.fromOffset(10, 8),
-                Size = UDim2.new(1, -20, 0, 20),
-                TextXAlignment = Enum.TextXAlignment.Left,
-                BackgroundTransparency = 1
-            }),
-            Create("TextLabel", {
-                Text = Content,
-                Font = Enum.Font.Gotham,
-                TextColor3 = Theme.SubText,
-                TextSize = 12,
-                Position = UDim2.fromOffset(10, 28),
-                Size = UDim2.new(1, -20, 0, 20),
-                TextXAlignment = Enum.TextXAlignment.Left,
-                BackgroundTransparency = 1
-            })
-        })
-
-        Nebula:Tween(NotifFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back), {Position = UDim2.new(1, -260, 1, -70)})
-        task.delay(Duration, function()
-            Nebula:Tween(NotifFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Position = UDim2.new(1, 10, 1, -70)})
-            task.wait(0.5)
-            NotifFrame:Destroy()
-        end)
+        Nebula:Notify(options) -- Use the global Nebula:Notify
     end
 
     function Window:Dialog(options)
-        options = options or {}
-        local Title = options.Title or "Are you sure?"
-        local Content = options.Content or "This action cannot be undone."
-        local Buttons = options.Buttons or {{Title = "Confirm", Callback = function() end}, {Title = "Cancel", Callback = function() end}}
-
-        local Overlay = Create("Frame", {
-            BackgroundColor3 = Color3.new(0, 0, 0),
-            BackgroundTransparency = 1,
-            Size = UDim2.fromScale(1, 1),
-            ZIndex = 1000,
-            Parent = Main
-        })
-
-        local DialogFrame = Create("Frame", {
-            AnchorPoint = Vector2.new(0.5, 0.5),
-            BackgroundColor3 = Theme.Main,
-            Position = UDim2.fromScale(0.5, 0.45),
-            Size = UDim2.fromOffset(300, 160),
-            Parent = Overlay
-        }, {
-            Create("UICorner", {CornerRadius = UDim.new(0, 10)}),
-            Create("UIStroke", {Color = Theme.Accent, Thickness = 2}),
-            Create("TextLabel", {
-                Text = Title,
-                Font = Enum.Font.GothamBold,
-                TextColor3 = Theme.Text,
-                TextSize = 16,
-                Position = UDim2.fromOffset(0, 20),
-                Size = UDim2.new(1, 0, 0, 30),
-                BackgroundTransparency = 1
-            }),
-            Create("TextLabel", {
-                Text = Content,
-                Font = Enum.Font.Gotham,
-                TextColor3 = Theme.SubText,
-                TextSize = 13,
-                Position = UDim2.fromOffset(20, 50),
-                Size = UDim2.new(1, -40, 1, -100),
-                TextWrapped = true,
-                BackgroundTransparency = 1
-            })
-        })
-
-        local ButtonHolder = Create("Frame", {
-            AnchorPoint = Vector2.new(0.5, 1),
-            Position = UDim2.new(0.5, 0, 1, -15),
-            Size = UDim2.new(1, -30, 0, 35),
-            BackgroundTransparency = 1,
-            Parent = DialogFrame
-        }, {
-            Create("UIListLayout", {
-                FillDirection = Enum.FillDirection.Horizontal,
-                Padding = UDim.new(0, 10),
-                HorizontalAlignment = Enum.HorizontalAlignment.Center
-            })
-        })
-
-        Nebula:Tween(Overlay, TweenInfo.new(0.3), {BackgroundTransparency = 0.4})
-        Nebula:Tween(DialogFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back), {Position = UDim2.fromScale(0.5, 0.5)})
-
-        for _, btn in ipairs(Buttons) do
-            local b = Create("TextButton", {
-                BackgroundColor3 = btn.Title == "Confirm" and Theme.Accent or Theme.Element,
-                Size = UDim2.new(0.5, -5, 1, 0),
-                Text = btn.Title,
-                Font = Enum.Font.GothamMedium,
-                TextColor3 = Theme.Text,
-                TextSize = 13,
-                Parent = ButtonHolder
-            }, {
-                Create("UICorner", {CornerRadius = UDim.new(0, 6)})
-            })
-
-            b.MouseButton1Click:Connect(function()
-                btn.Callback()
-                Nebula:Tween(Overlay, TweenInfo.new(0.3), {BackgroundTransparency = 1})
-                Nebula:Tween(DialogFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Position = UDim2.fromScale(0.5, 0.45)})
-                task.wait(0.3)
-                Overlay:Destroy()
-            end)
-        end
+        Nebula:Dialog(options) -- Use the global Nebula:Dialog
     end
 
 
@@ -1518,6 +1617,64 @@ function Nebula:CreateDock(config)
         }),
         Create("UIPadding", {PaddingLeft = UDim.new(0, 5), PaddingRight = UDim.new(0, 5)})
     })
+
+    -- Performance Monitor (Top-Right Widget in Dock)
+    local StatsContainer = Create("Frame", {
+        Name = "Diagnostics",
+        Size = UDim2.new(0, 130, 0, 36),
+        Position = UDim2.new(1, -145, 0, 0),
+        BackgroundTransparency = 1,
+        Parent = Dock
+    }, {
+        Create("UIListLayout", {
+            FillDirection = Enum.FillDirection.Vertical,
+            Padding = UDim.new(0, 2),
+            VerticalAlignment = Enum.VerticalAlignment.Center,
+            HorizontalAlignment = Enum.HorizontalAlignment.Right
+        })
+    })
+
+    local FPSLabel = Create("TextLabel", {
+        Text = "FPS: ...",
+        Size = UDim2.new(1, 0, 0, 12),
+        TextColor3 = Theme.Text,
+        Font = Theme.Font,
+        TextSize = 10,
+        TextTransparency = 0.4,
+        TextXAlignment = Enum.TextXAlignment.Right,
+        BackgroundTransparency = 1,
+        Parent = StatsContainer
+    })
+
+    local PingLabel = Create("TextLabel", {
+        Text = "Ping: ...",
+        Size = UDim2.new(1, 0, 0, 12),
+        TextColor3 = Theme.Accent,
+        Font = Theme.Font,
+        TextSize = 10,
+        TextTransparency = 0.4,
+        TextXAlignment = Enum.TextXAlignment.Right,
+        BackgroundTransparency = 1,
+        Parent = StatsContainer
+    })
+
+    -- Diagnostic Logic
+    local lastTime = tick()
+    local frameCount = 0
+    RunService.RenderStepped:Connect(function()
+        frameCount = frameCount + 1
+        local currentTime = tick()
+        if currentTime - lastTime >= 1 then
+            local fps = math.floor(frameCount / (currentTime - lastTime))
+            FPSLabel.Text = string.format("FPS: %d", fps)
+            
+            local ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue())
+            PingLabel.Text = string.format("PING: %dms", ping)
+            
+            frameCount = 0
+            lastTime = currentTime
+        end
+    end)
 
     -- Settings Gear (Right Side)
     local SettingsBtn = Create("ImageButton", {
