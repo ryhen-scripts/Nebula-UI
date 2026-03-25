@@ -11,14 +11,14 @@ local Nebula = {
     Version = "1.0.0",
     Themes = {
         Space = {
-            Main = Color3.fromRGB(15, 12, 25),
+            Main = Color3.fromRGB(20, 20, 20), -- Charcoal
             Accent = Color3.fromRGB(140, 80, 255),
             Secondary = Color3.fromRGB(255, 100, 210),
-            Text = Color3.fromRGB(245, 245, 255),
-            SubText = Color3.fromRGB(180, 180, 200),
-            Border = Color3.fromRGB(60, 50, 90),
-            Holder = Color3.fromRGB(25, 20, 40),
-            Element = Color3.fromRGB(35, 30, 55),
+            Text = Color3.fromRGB(255, 255, 255),
+            SubText = Color3.fromRGB(160, 160, 160),
+            Border = Color3.fromRGB(45, 45, 45),
+            Holder = Color3.fromRGB(28, 28, 28),
+            Element = Color3.fromRGB(35, 35, 35),
         }
     },
     CurrentTheme = "Space",
@@ -172,10 +172,63 @@ function Nebula:CreateWindow(config)
         TextSize = 12,
         TextXAlignment = Enum.TextXAlignment.Left,
         Position = UDim2.fromOffset(15, 24),
-        Size = UDim2.new(1, -30, 0.4, 0),
+        Size = UDim2.new(1, -150, 0.4, 0),
         BackgroundTransparency = 1,
         Parent = Header
     })
+
+    -- Header Controls
+    local Controls = Create("Frame", {
+        Name = "Controls",
+        AnchorPoint = Vector2.new(1, 0),
+        Position = UDim2.new(1, -10, 0, 10),
+        Size = UDim2.fromOffset(120, 25),
+        BackgroundTransparency = 1,
+        Parent = Header
+    }, {
+        Create("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal,
+            HorizontalAlignment = Enum.HorizontalAlignment.Right,
+            Padding = UDim.new(0, 10)
+        })
+    })
+
+    local function CreateHeaderBtn(name, icon, callback)
+        local btn = Create("ImageButton", {
+            Name = name,
+            BackgroundTransparency = 1,
+            Size = UDim2.fromOffset(20, 20),
+            Image = icon,
+            ImageColor3 = Theme.SubText,
+            Parent = Controls
+        })
+        btn.MouseButton1Click:Connect(callback)
+        btn.MouseEnter:Connect(function() Nebula:Tween(btn, TweenInfo.new(0.2), {ImageColor3 = Theme.Accent}) end)
+        btn.MouseLeave:Connect(function() Nebula:Tween(btn, TweenInfo.new(0.2), {ImageColor3 = Theme.SubText}) end)
+        return btn
+    end
+
+    local SearchBtn = CreateHeaderBtn("Search", "rbxassetid://10723374668", function() print("Search clicked") end)
+    local MinimizeBtn = CreateHeaderBtn("Minimize", "rbxassetid://10734896206", function()
+        local Visible = (Main.GroupTransparency < 0.5)
+        if Visible then
+            Nebula:Tween(Main, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+                Size = UDim2.fromScale(0.7, 0.7),
+                GroupTransparency = 1
+            })
+        else
+            Nebula:Tween(Main, TweenInfo.new(0.4, Enum.EasingStyle.Back), {
+                Size = Size,
+                GroupTransparency = 0
+            })
+        end
+    end)
+    local CloseBtn = CreateHeaderBtn("Close", "rbxassetid://10747384390", function()
+        Nebula:Tween(Main, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+            Size = UDim2.fromScale(0.5, 0.5),
+            GroupTransparency = 1
+        }).Completed:Connect(function() ScreenGui:Destroy() end)
+    end)
 
     -- Navigation Container
     local Navigation = Create("Frame", {
@@ -235,8 +288,13 @@ function Nebula:CreateWindow(config)
     local Window = {
         Tabs = {},
         SelectedTab = nil,
-        Main = Main, -- Adicionado para controle externo (Toggle)
+        Main = Main,
+        OnSearch = function() end
     }
+
+    function Window:SetSearchCallback(callback)
+        Window.OnSearch = callback
+    end
 
     function Window:AddTab(options)
         options = options or {}
@@ -252,14 +310,23 @@ function Nebula:CreateWindow(config)
             Parent = Navigation
         }, {
             Create("UICorner", {CornerRadius = UDim.new(0, 6)}),
+            Create("ImageLabel", {
+                Name = "Icon",
+                Size = UDim2.fromOffset(18, 18),
+                Position = UDim2.fromOffset(8, 7),
+                BackgroundTransparency = 1,
+                Image = Icon ~= "" and Icon or "rbxassetid://10709791437", -- Default icon
+                ImageColor3 = Theme.SubText,
+                Parent = TabButton
+            }),
             Create("TextLabel", {
                 Text = Name,
                 Font = Enum.Font.GothamMedium,
                 TextColor3 = Theme.SubText,
                 TextSize = 13,
-                Size = UDim2.fromScale(1, 1),
+                Size = UDim2.new(1, -30, 1, 0),
                 BackgroundTransparency = 1,
-                Position = UDim2.fromOffset(5, 0),
+                Position = UDim2.fromOffset(32, 0),
                 TextXAlignment = Enum.TextXAlignment.Left
             })
         })
@@ -285,14 +352,24 @@ function Nebula:CreateWindow(config)
 
         function Tab:Select()
             if Window.SelectedTab then
-                Window.SelectedTab.Frame.Visible = false
-                Nebula:Tween(Window.SelectedTab.Button, TweenInfo.new(0.3), {BackgroundTransparency = 0.8})
-                Window.SelectedTab.Button.TextLabel.TextColor3 = Theme.SubText
+                Window.SelectedTab:Unselect()
             end
             Window.SelectedTab = Tab
             Tab.Frame.Visible = true
             Nebula:Tween(TabButton, TweenInfo.new(0.3), {BackgroundTransparency = 0.4})
             TabButton.TextLabel.TextColor3 = Theme.Text
+            if TabButton:FindFirstChild("Icon") then
+                TabButton.Icon.ImageColor3 = Theme.Accent
+            end
+        end
+
+        function Tab:Unselect()
+            Tab.Frame.Visible = false
+            Nebula:Tween(TabButton, TweenInfo.new(0.3), {BackgroundTransparency = 0.8})
+            TabButton.TextLabel.TextColor3 = Theme.SubText
+            if TabButton:FindFirstChild("Icon") then
+                TabButton.Icon.ImageColor3 = Theme.SubText
+            end
         end
 
         TabButton.MouseButton1Click:Connect(function()
@@ -968,6 +1045,148 @@ function Nebula:CreateWindow(config)
         return {SetTitle = function(t) end, SetContent = function(c) end}
     end
 
+    function Window:AddProfile(options)
+        options = options or {}
+        local Name = options.Name or "User"
+        local Rank = options.Rank or "Guest"
+        local Avatar = options.Avatar or "rbxassetid://0"
+
+        local ProfileFrame = Create("Frame", {
+            Name = "Profile",
+            BackgroundColor3 = Theme.Holder,
+            BackgroundTransparency = 0.5,
+            Position = UDim2.fromOffset(10, 60), -- Adjusting based on layout
+            Size = UDim2.new(0, 150, 0, 120),
+            Parent = Main
+        }, {
+            Create("UICorner", {CornerRadius = UDim.new(0, 8)}),
+            Create("ImageLabel", {
+                Name = "Avatar",
+                AnchorPoint = Vector2.new(0.5, 0),
+                Position = UDim2.new(0.5, 0, 0, 10),
+                Size = UDim2.fromOffset(50, 50),
+                BackgroundColor3 = Theme.Element,
+                Image = Avatar,
+                Parent = ProfileFrame
+            }, {Create("UICorner", {CornerRadius = UDim.new(1, 0)})}),
+            Create("TextLabel", {
+                Name = "Username",
+                Text = Name,
+                Font = Enum.Font.GothamBold,
+                TextColor3 = Theme.Text,
+                TextSize = 14,
+                Position = UDim2.new(0, 0, 0, 65),
+                Size = UDim2.new(1, 0, 0, 20),
+                BackgroundTransparency = 1,
+                Parent = ProfileFrame
+            }),
+            Create("TextLabel", {
+                Name = "Rank",
+                Text = Rank,
+                Font = Enum.Font.Gotham,
+                TextColor3 = Theme.Accent,
+                TextSize = 11,
+                Position = UDim2.new(0, 0, 0, 82),
+                Size = UDim2.new(1, 0, 0, 15),
+                BackgroundTransparency = 1,
+                Parent = ProfileFrame
+            })
+        })
+
+        -- Shift Navigation down
+        Navigation.Position = UDim2.fromOffset(10, 190)
+        Navigation.Size = UDim2.new(0, 150, 1, -200)
+
+        return {
+            SetName = function(t) ProfileFrame.Username.Text = t end,
+            SetRank = function(t) ProfileFrame.Rank.Text = t end,
+            SetAvatar = function(t) ProfileFrame.Avatar.Image = t end
+        }
+    end
+
+    function Window:AddPlayerList(options)
+        options = options or {}
+        local Title = options.Title or "Players"
+
+        local ListFrame = Create("Frame", {
+            Name = "PlayerList",
+            AnchorPoint = Vector2.new(1, 0),
+            BackgroundColor3 = Theme.Holder,
+            BackgroundTransparency = 0.5,
+            Position = UDim2.new(1, -10, 0, 60),
+            Size = UDim2.new(0, 140, 1, -70),
+            Parent = Main
+        }, {
+            Create("UICorner", {CornerRadius = UDim.new(0, 8)}),
+            Create("TextLabel", {
+                Text = Title,
+                Font = Enum.Font.GothamBold,
+                TextColor3 = Theme.SubText,
+                TextSize = 12,
+                Size = UDim2.new(1, 0, 0, 25),
+                BackgroundTransparency = 1
+            })
+        })
+
+        local Scroll = Create("ScrollingFrame", {
+            BackgroundTransparency = 1,
+            Position = UDim2.fromOffset(0, 25),
+            Size = UDim2.new(1, 0, 1, -25),
+            ScrollBarThickness = 0,
+            CanvasSize = UDim2.new(0, 0, 0, 0),
+            Parent = ListFrame
+        }, {
+            Create("UIListLayout", {Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder}),
+            Create("UIPadding", {PaddingTop = UDim.new(0, 5), PaddingLeft = UDim.new(0, 5), PaddingRight = UDim.new(0, 5)})
+        })
+
+        -- Shift Container to accommodate list
+        Container.Size = UDim2.new(1, -330, 1, -70)
+
+        local PlayerList = {}
+        function PlayerList:AddPlayer(name, rank, avatar)
+            local Entry = Create("Frame", {
+                BackgroundColor3 = Theme.Element,
+                Size = UDim2.new(1, 0, 0, 35),
+                Parent = Scroll
+            }, {
+                Create("UICorner", {CornerRadius = UDim.new(0, 6)}),
+                Create("ImageLabel", {
+                    Size = UDim2.fromOffset(25, 25),
+                    Position = UDim2.fromOffset(5, 5),
+                    BackgroundColor3 = Theme.Holder,
+                    Image = avatar or "rbxassetid://0",
+                    Parent = Entry
+                }, {Create("UICorner", {CornerRadius = UDim.new(1, 0)})}),
+                Create("TextLabel", {
+                    Text = name,
+                    Font = Enum.Font.GothamMedium,
+                    TextColor3 = Theme.Text,
+                    TextSize = 12,
+                    Position = UDim2.fromOffset(35, 4),
+                    Size = UDim2.new(1, -40, 0, 15),
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    BackgroundTransparency = 1,
+                    Parent = Entry
+                }),
+                Create("TextLabel", {
+                    Text = rank or "Guest",
+                    Font = Enum.Font.Gotham,
+                    TextColor3 = Theme.SubText,
+                    TextSize = 10,
+                    Position = UDim2.fromOffset(35, 17),
+                    Size = UDim2.new(1, -40, 0, 12),
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    BackgroundTransparency = 1,
+                    Parent = Entry
+                })
+            })
+            return Entry
+        end
+
+        return PlayerList
+    end
+
     return Window
 end
 
@@ -1073,33 +1292,54 @@ end
 --------------------------------------------------------------------------------
 --[[
 local Window = Nebula:CreateWindow({
-    Title = "Nebula Hub",
-    SubTitle = "by Antigravity",
+    Title = "Admin Panel",
+    SubTitle = "Nebula Premium v2.0",
 })
 
-local MainTab = Window:AddTab({ Title = "General", Icon = "home" })
+-- Adding Profile (Upper Sidebar)
+Window:AddProfile({
+    Name = game.Players.LocalPlayer.Name,
+    Rank = "Developer",
+    Avatar = "rbxassetid://0" -- Use actual avatar ID
+})
+
+-- Adding Player List (Right Side)
+local PlayerList = Window:AddPlayerList({ Title = "Players" })
+PlayerList:AddPlayer("Ryhen", "Dev", "rbxassetid://0")
+PlayerList:AddPlayer("lxpes", "Guest", "rbxassetid://0")
+
+-- Setting Search Callback
+Window:SetSearchCallback(function(query)
+    print("Searching for:", query)
+end)
+
+local MainTab = Window:AddTab({ 
+    Title = "Dashboard", 
+    Icon = "rbxassetid://10723351906" 
+})
 
 MainTab:AddButton({
-    Title = "Click Me",
-    Description = "Shows a notification",
+    Title = "Kick Player",
+    Description = "Select a player to kick",
     Callback = function()
-        Window:Notify({ Title = "Nebula", Content = "Button Pressed!" })
+        Window:Dialog({
+            Title = "Confirm Kick",
+            Content = "Are you sure you want to kick this player?",
+            Buttons = {
+                {Title = "Confirm", Callback = function() print("Kicked!") end},
+                {Title = "Cancel", Callback = function() end}
+            }
+        })
     end
 })
 
 MainTab:AddToggle({
-    Title = "Auto Farm",
-    Default = false,
-    Callback = function(v) print("Toggled:", v) end
+    Title = "Anti-AFK",
+    Default = true,
+    Callback = function(v) print("Anti-AFK:", v) end
 })
 
-MainTab:AddSlider({
-    Title = "WalkSpeed",
-    Min = 16, Max = 100, Default = 16,
-    Callback = function(v) print("Speed:", v) end
-})
-
-Nebula:CreateLoadingScreen("NEBULA", "Loading resources...")
+Nebula:CreateLoadingScreen("NEBULA", "Synchronizing Panel...")
 --]]
 
 return Nebula
