@@ -59,7 +59,7 @@ local function Create(className, properties, children)
         child.Parent = instance
     end
     return instance
-}
+end
 
 function Nebula:Tween(obj, info, goal)
     local tween = TweenService:Create(obj, info, goal)
@@ -218,7 +218,64 @@ function Nebula:Notify(config)
     end)
 end
 
-function Nebula:Dialog(config)
+function Nebula:AddChatSpy()
+    local Players = game:GetService("Players")
+    local LogService = game:GetService("LogService")
+    
+    local function onChatted(player, message)
+        if player ~= Players.LocalPlayer then
+            Nebula:Notify({
+                Title = "Chat Spy: " .. player.DisplayName,
+                Content = message,
+                Type = "Info",
+                Duration = 7
+            })
+            print(string.format("[ChatSpy] %s: %s", player.Name, message))
+        end
+    end
+
+    for _, p in pairs(Players:GetPlayers()) do
+        p.Chatted:Connect(function(msg) onChatted(p, msg) end)
+    end
+    Players.PlayerAdded:Connect(function(p)
+        p.Chatted:Connect(function(msg) onChatted(p, msg) end)
+    end)
+    
+    Nebula:Notify({Title = "Chat Spy Activated", Content = "Monitoring incoming server traffic.", Type = "Success"})
+end
+
+function Nebula:CinematicServerHop()
+    local Camera = workspace.CurrentCamera
+    local Players = game:GetService("Players")
+    local TeleportService = game:GetService("TeleportService")
+    
+    Camera.CameraType = Enum.CameraType.Scriptable
+    
+    local StartCFrame = Camera.CFrame
+    local SkyCFrame = StartCFrame * CFrame.new(0, 3000, 0) * CFrame.Angles(math.rad(-90), 0, 0)
+    
+    Nebula:Notify({
+        Title = "Satellite Link",
+        Content = "Uploading player state to orbit...",
+        Type = "Info",
+        Duration = 5
+    })
+    
+    local t = Nebula:Tween(Camera, TweenInfo.new(4, Enum.EasingStyle.Cubic, Enum.EasingDirection.InOut), {
+        CFrame = SkyCFrame
+    })
+    
+    task.wait(3.5)
+    
+    local success, err = pcall(function()
+        TeleportService:Teleport(game.PlaceId, Players.LocalPlayer)
+    end)
+    
+    if not success then
+        Nebula:Notify({Title = "Orbital Error", Content = "Teleport failed: " .. tostring(err), Type = "Error"})
+        Camera.CameraType = Enum.CameraType.Custom
+    end
+end
     config = config or {}
     local Title = config.Title or "Confirm Action"
     local Content = config.Content or ""
@@ -1240,12 +1297,8 @@ function Nebula:CreateWindow(config)
         return Tab
     end
 
-    function Window:Notify(options)
-        Nebula:Notify(options) -- Use the global Nebula:Notify
-    end
-
-    function Window:Dialog(options)
-        Nebula:Dialog(options) -- Use the global Nebula:Dialog
+    function Window:ServerHop()
+        Nebula:CinematicServerHop()
     end
 
 
